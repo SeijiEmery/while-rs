@@ -1,9 +1,9 @@
-use crate::while_lang::types::IntegerValue;
+use crate::while_lang::types::Value;
 use crate::while_lang::types::Variable;
 
 #[derive(Debug)]
 pub enum AExpr {
-    Value(IntegerValue),
+    Value(Value),
     Variable(Variable),
     Add(Box<AExpr>, Box<AExpr>),
     Sub(Box<AExpr>, Box<AExpr>),
@@ -23,8 +23,7 @@ macro_rules!make_ctor {
         }
     };
 }
-
-make_ctor!(val (v: IntegerValue) -> Box<AExpr::Value>);
+make_ctor!(val (v: Value) -> Box<AExpr::Value>);
 make_ctor!(var (v: Variable) -> Box<AExpr::Variable>);
 make_ctor!(add (left: BoxedAExpr, right: BoxedAExpr) -> Box<AExpr::Add>);
 make_ctor!(sub (left: BoxedAExpr, right: BoxedAExpr) -> Box<AExpr::Sub>);
