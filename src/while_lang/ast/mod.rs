@@ -6,3 +6,8 @@ pub use aexpr::var;
 pub use aexpr::add;
 pub use aexpr::sub;
 pub use aexpr::mul;
+pub use bexpr::BExpr;
+pub use bexpr::btrue;
+pub use bexpr::bfalse;
+pub use bexpr::equal;
+pub use bexpr::less;

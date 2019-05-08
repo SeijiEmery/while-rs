@@ -3,7 +3,7 @@ mod while_lang;
 #[cfg(test)]
 mod tests {
     #[test]
-    fn arith () {
+    fn arith_tests () {
         use crate::while_lang::ast::val;
         use crate::while_lang::ast::var;
         use crate::while_lang::ast::add;
@@ -24,4 +24,7 @@ mod tests {
         assert_eq!(eval(sub(val(2), val(4)), &empty), Ok(-2));
         assert_eq!(eval(mul(val(2), val(4)), &empty), Ok(8));
     }
+
+    #[test]
+    fn bool_tests () {}
 }
