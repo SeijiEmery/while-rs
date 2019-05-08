@@ -5,7 +5,7 @@ use std::ops::Add;
 use std::ops::Sub;
 use std::ops::Mul;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum AExpr {
     Value(Value),
     Variable(Variable),
@@ -14,6 +14,42 @@ pub enum AExpr {
     Mul(Box<AExpr>, Box<AExpr>),
 }
 
+fn unsafeGetValue (ast: &Box<AExpr>) -> Value {
+    return match **ast {
+        AExpr::Value(a) => a,
+        _ => panic!(format!("{:?} is not a value!", *ast))
+    }
+}
+pub fn evalStep (ast: &mut Box<AExpr>, state: &mut State, result: &mut Result<bool, String>) -> bool {
+    return match **ast {
+        AExpr::Add(ref mut a, ref mut b) => {
+            if !evalStep(a, state, result) && !evalStep(b, state, result) {
+                *ast = Box::new(AExpr::Value(unsafeGetValue(&a) + unsafeGetValue(&b)));
+            }
+            true
+        },
+        AExpr::Sub(ref mut a, ref mut b) => {
+            if !evalStep(a, state, result) && !evalStep(b, state, result) {
+                *ast = Box::new(AExpr::Value(unsafeGetValue(&a) - unsafeGetValue(&b)));
+            }
+            true
+        },
+        AExpr::Mul(ref mut a, ref mut b) => {
+            if !evalStep(a, state, result) && !evalStep(b, state, result) {
+                *ast = Box::new(AExpr::Value(unsafeGetValue(&a) * unsafeGetValue(&b)));
+            }
+            true
+        },
+        AExpr::Variable(ref v) => {
+            match state.get(&v) {
+                Ok(a) => *ast = Box::new(AExpr::Value(a)),
+                Err(msg) => *result = Err(msg),
+            }
+            true
+        },
+        AExpr::Value(_) => false
+    }
+}
 pub fn eval (ast: Box<AExpr>, state: &State) -> Result<Value, String> {
     return match *ast {
         AExpr::Value(v) => Ok(v),
