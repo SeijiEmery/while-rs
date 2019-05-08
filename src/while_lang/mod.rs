@@ -1,5 +1,6 @@
 pub mod ast;
 pub mod eval;
+pub mod types;
 pub use eval::eval;
 pub use ast::AExpr;
 pub use ast::val;
@@ -7,5 +8,7 @@ pub use ast::var;
 pub use ast::add;
 pub use ast::sub;
 pub use ast::mul;
-//
-
+pub use types::HashState;
+pub use types::Value;
+pub use types::Variable;
+pub use types::State;
