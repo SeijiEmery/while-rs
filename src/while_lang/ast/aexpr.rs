@@ -20,7 +20,7 @@ fn unsafeGetValue (ast: &Box<AExpr>) -> Value {
         _ => panic!(format!("{:?} is not a value!", *ast))
     }
 }
-pub fn evalStep (ast: &mut Box<AExpr>, state: &mut State, result: &mut Result<bool, String>) -> bool {
+pub fn evalStep (ast: &mut Box<AExpr>, state: &State, result: &mut Result<bool, String>) -> bool {
     return match **ast {
         AExpr::Add(ref mut a, ref mut b) => {
             if !evalStep(a, state, result) && !evalStep(b, state, result) {

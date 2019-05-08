@@ -3,6 +3,8 @@ mod while_lang;
 
 #[cfg(test)]
 mod tests {
+    use crate::while_lang::types::HashState;
+
     #[test]
     fn arith_tests () {
         use crate::while_lang::ast::aexpr::val;
@@ -21,6 +23,95 @@ mod tests {
         assert_eq!(eval(val(2) + val(4), &empty), Ok(6));
         assert_eq!(eval(val(2) - val(4), &empty), Ok(-2));
         assert_eq!(eval(val(2) * val(4), &empty), Ok(8));
+    }
+
+    #[test]
+    fn arith_step_tests () {
+        use crate::while_lang::ast::aexpr::val;
+        use crate::while_lang::ast::aexpr::var;
+        use crate::while_lang::ast::aexpr::evalStep;
+        use crate::while_lang::HashState;
+
+        let empty = HashState::new();
+        let mut x10 = HashState::new();
+        x10.insert("x".to_string(), 10);
+
+        {
+            let mut ast = val(10);
+            let state = empty;
+            let mut result = Ok(true);
+            assert_eq!(evalStep(&mut ast, &state, &mut result), false);
+            assert_eq!(ast, val(10));
+            assert_eq!(state, empty);
+            assert_eq!(result, Ok(true));
+        }
+        {
+            let mut ast = var("x");
+            let state = empty;
+            let mut result = Ok(true);
+            assert_eq!(evalStep(&mut ast, &state, &mut result), true);
+            assert_eq!(result.is_err(), true);
+            assert_eq!(state, empty);
+        }
+        {
+            let mut ast = var("x");
+            let state = x10;
+            let mut result = Ok(true);
+            assert_eq!(evalStep(&mut ast, &state, &mut result), true);
+            assert_eq!(result.is_err(), false);
+            assert_eq!(*ast, *val(10));
+
+            assert_eq!(evalStep(&mut ast, &state, &mut result), false);
+            assert_eq!(result.is_err(), false);
+            assert_eq!(ast, val(10));
+        }
+        {
+            let mut ast = var("x") + val(10);
+            let state = x10;
+            let mut result = Ok(true);
+            assert_eq!(evalStep(&mut ast, &state, &mut result), true);
+            assert_eq!(result.is_err(), false);
+            assert_eq!(ast, val(10) + val(10));
+
+            assert_eq!(evalStep(&mut ast, &state, &mut result), true);
+            assert_eq!(result.is_err(), false);
+            assert_eq!(ast, val(20));
+
+            assert_eq!(evalStep(&mut ast, &state, &mut result), false);
+            assert_eq!(result.is_err(), false);
+            assert_eq!(ast, val(20));
+        }
+        {
+            let mut ast = var("x") + var("y");
+            let state = x10;
+            let mut result = Ok(true);
+            assert_eq!(evalStep(&mut ast, &state, &mut result), true);
+            assert_eq!(result.is_err(), false);
+            assert_eq!(ast, val(10) + var("y"));
+
+            assert_eq!(evalStep(&mut ast, &state, &mut result), true);
+            assert_eq!(result.is_err(), true);
+        }
+        {
+            let mut ast = (var("x") * val(10)) - val(20);
+            let state = x10;
+            let mut result = Ok(true);
+            assert_eq!(evalStep(&mut ast, &state, &mut result), true);
+            assert_eq!(result.is_err(), false);
+            assert_eq!(ast, (val(10) * val(10)) - val(20));
+
+            assert_eq!(evalStep(&mut ast, &state, &mut result), true);
+            assert_eq!(result.is_err(), false);
+            assert_eq!(ast, val(20) - val(20));
+
+            assert_eq!(evalStep(&mut ast, &state, &mut result), true);
+            assert_eq!(result.is_err(), false);
+            assert_eq!(ast, val(0));
+
+            assert_eq!(evalStep(&mut ast, &state, &mut result), false);
+            assert_eq!(result.is_err(), false);
+            assert_eq!(ast, val(0));
+        }
     }
 
     #[test]
