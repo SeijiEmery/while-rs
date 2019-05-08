@@ -13,6 +13,46 @@ pub enum AExpr {
     Sub(Box<AExpr>, Box<AExpr>),
     Mul(Box<AExpr>, Box<AExpr>),
 }
+pub fn pureEvalStep (ast: Box<AExpr>, state: &State) -> Result<Box<AExpr>, String> {
+    return match *ast {
+        AExpr::Add(a, b) => pureEvalBinary(
+            |a, b| a + b,
+            |a, b| Box::new(AExpr::Add(a, b)),
+            a, b, state),
+        AExpr::Sub(a, b) => pureEvalBinary(
+            |a, b| a - b,
+            |a, b| Box::new(AExpr::Sub(a, b)),
+            a, b, state),
+        AExpr::Mul(a, b) => pureEvalBinary(
+            |a, b| a * b,
+            |a, b| Box::new(AExpr::Mul(a, b)),
+            a, b, state),
+        AExpr::Variable(v) => match state.get(&v) {
+            Ok(a) => Box::new(AExpr::Value),
+            Err(msg) => Err(msg),
+        },
+        AExpr::Value(_) => Ok(ast)
+    }
+}
+fn pureEvalBinary <F, C>(f: F, c: C, left: Box<AExpr>, right: Box<AExpr>, state: &State) -> Result<Box<AExpr>, String>
+    where F: FnOnce(Value, Value) -> Value, C: FnOnce(Box<AExpr>, Box<AExpr>) -> Box<AExpr>
+{
+    return match left {
+        AExpr::Value(a) => match right {
+            AExpr::Value(b) => Ok(Box::new(AExpr::Value(f(a, b)))),
+            _ => match pureEvalStep(right, state) {
+                Ok(right) => Ok(c(left, right)),
+                Err(msg) => Err(msg),
+            }
+        },
+        _ => match pureEvalStep(left, state) {
+            Ok(left) => Ok(c(left, right)),
+            Err(msg) => Err(msg),
+        }
+    };
+}
+
+
 
 fn unsafeGetValue (ast: &Box<AExpr>) -> Value {
     return match **ast {
