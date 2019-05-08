@@ -1,3 +1,4 @@
+#![feature(concat_idents)]
 mod while_lang;
 
 macro_rules!impl_ast {
@@ -5,9 +6,9 @@ macro_rules!impl_ast {
         let $name = AExpr::Value($x);
     };
     ($name:ident add ( $($left:tt)* ) ( $($right:tt)* )) => {
-        impl_ast!(left $($left)*);
-        impl_ast!(right $($right)*);
-        let $name = AExpr::Add(&left, &right);
+        impl_ast!(concat_idents!($name, l) $($left)*);
+        impl_ast!(concat_idents!($name, r) $($right)*);
+        let $name = AExpr::Add(&concat_idents!($name, l), &concat_idents!($name, r));
     }
 }
 #[cfg(test)]
