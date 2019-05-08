@@ -1,8 +1,6 @@
 #![macro_use]
 pub mod ast;
-pub mod eval;
 pub mod types;
-pub use eval::eval;
 pub use ast::AExpr;
 pub use ast::val;
 pub use ast::var;

@@ -1,23 +1,53 @@
 use crate::while_lang::types::Value;
+use crate::while_lang::types::State;
 use super::aexpr::AExpr;
 use std::ops::Not;
 use std::ops::BitOr;
 use std::ops::BitAnd;
 
 #[derive(Debug)]
-
-
 pub enum BExpr {
     Value(bool),
-    Equal(Box<AExpr>, Box<AExpr>),
-    Less(Box<AExpr>, Box<AExpr>),
-    And(Box<BExpr>, Box<BExpr>),
-    Or(Box<BExpr>, Box<BExpr>),
     Not(Box<BExpr>),
+    Or(Box<BExpr>, Box<BExpr>),
+    And(Box<BExpr>, Box<BExpr>),
+    Less(Box<AExpr>, Box<AExpr>),
+    Equal(Box<AExpr>, Box<AExpr>),
 }
 
-pub static btrue : BExpr = BExpr::Value(true);
-pub static bfalse : BExpr = BExpr::Value(false);
+pub fn eval (ast: Box<BExpr>, state: &State) -> Result<bool, String> {
+    return match *ast {
+        BExpr::Value(v) => Ok(v),
+        BExpr::Not(a) => eval(a, state).map(|a| !a),
+        BExpr::Or(a, b) => evalBinary(|a, b| a || b, a, b, state),
+        BExpr::And(a, b) => evalBinary(|a, b| a && b, a, b, state),
+        BExpr::Less(a, b) => evalCmp(|a, b| a < b, a, b, state),
+        BExpr::Equal(a, b) => evalCmp(|a, b| a == b, a, b, state),
+    }
+}
+fn evalBinary <F>(f: F, left: Box<BExpr>, right: Box<BExpr>, state: &State) -> Result<bool, String>
+    where F: FnOnce(bool, bool) -> bool
+{
+    return match eval(left, state) {
+        Ok(a) => match eval(right, state) {
+            Ok(b) => Ok(f(a, b)),
+            err => err,
+        },
+        err => err
+    };
+}
+fn evalCmp <F>(f: F, left: Box<AExpr>, right: Box<AExpr>, state: &State) -> Result<bool, String>
+    where F: FnOnce(Value, Value) -> bool
+{
+    use super::aexpr;
+    return match aexpr::eval(left, state) {
+        Ok(a) => match aexpr::eval(right, state) {
+            Ok(b) => Ok(f(a, b)),
+            Err(msg) => Err(msg),
+        },
+        Err(msg) => Err(msg)
+    };
+}
 
 macro_rules!make_ctor {
     ( $name:ident ($x1:ident: $t1:ident) -> $Container:ident < $Type:ident :: $Tag:ident > ) => {
@@ -34,6 +64,9 @@ macro_rules!make_ctor {
 
 type BoxedAExpr = Box<AExpr>;
 type BoxedBExpr = Box<BExpr>;
+
+pub fn btrue () -> BoxedBExpr { return Box::new(BExpr::Value(true)); }
+pub fn bfalse () -> BoxedBExpr { return Box::new(BExpr::Value(false)); }
 make_ctor!(not (expr: BoxedBExpr) -> Box<BExpr::Not>);
 make_ctor!(or (left: BoxedBExpr, right: BoxedBExpr) -> Box<BExpr::Or>);
 make_ctor!(and (left: BoxedBExpr, right: BoxedBExpr) -> Box<BExpr::And>);

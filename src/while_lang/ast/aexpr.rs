@@ -1,7 +1,6 @@
 use crate::while_lang::types::Value;
 use crate::while_lang::types::Variable;
-//use super::macro_utils::make_ctor;
-//use super::macro_utils::implement_operator_ctor;
+use crate::while_lang::types::State;
 use std::ops::Add;
 use std::ops::Sub;
 use std::ops::Mul;
@@ -14,7 +13,27 @@ pub enum AExpr {
     Sub(Box<AExpr>, Box<AExpr>),
     Mul(Box<AExpr>, Box<AExpr>),
 }
-type BoxedAExpr = Box<AExpr>;
+
+pub fn eval (ast: Box<AExpr>, state: &State) -> Result<Value, String> {
+    return match *ast {
+        AExpr::Value(v) => Ok(v),
+        AExpr::Variable(v) => state.get(&v),
+        AExpr::Add(a, b) => evalBinary(|a, b| a + b, a, b, state),
+        AExpr::Sub(a, b) => evalBinary(|a, b| a - b, a, b, state),
+        AExpr::Mul(a, b) => evalBinary(|a, b| a * b, a, b, state),
+    }
+}
+fn evalBinary <F>(f: F, left: Box<AExpr>, right: Box<AExpr>, state: &State) -> Result<Value, String>
+    where F: FnOnce(Value, Value) -> Value
+{
+    return match eval(left, state) {
+        Ok(a) => match eval(right, state) {
+            Ok(b) => Ok(f(a, b)),
+            err => err,
+        },
+        err => err
+    };
+}
 
 macro_rules! make_ctor {
     ( $name:ident ($x1:ident: $t1:ident) -> $Container:ident < $Type:ident :: $Tag:ident > ) => {
@@ -28,8 +47,9 @@ macro_rules! make_ctor {
         }
     };
 }
+type BoxedAExpr = Box<AExpr>;
 make_ctor!(val (v: Value) -> Box<AExpr::Value>);
-make_ctor!(var (v: Variable) -> Box<AExpr::Variable>);
+pub fn var (v: &str) -> BoxedAExpr { return Box::new(AExpr::Variable(v.to_string())); }
 make_ctor!(add (left: BoxedAExpr, right: BoxedAExpr) -> Box<AExpr::Add>);
 make_ctor!(sub (left: BoxedAExpr, right: BoxedAExpr) -> Box<AExpr::Sub>);
 make_ctor!(mul (left: BoxedAExpr, right: BoxedAExpr) -> Box<AExpr::Mul>);
