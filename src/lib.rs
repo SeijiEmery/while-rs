@@ -1,10 +1,11 @@
+mod while_lang;
+
 #[cfg(test)]
 mod tests {
     #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
+    fn arith () {
+        use crate::while_lang::ast::aexpr;
+        assert_eq!(eval(AExpr::Value(10)), 10);
+        assert_eq!(eval(Value(-10)), -10);
     }
-
-    #[test]
-    fn it_fails() { assert_eq!(2 + 2, 5); }
 }
