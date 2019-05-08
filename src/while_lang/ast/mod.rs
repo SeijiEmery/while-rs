@@ -1,4 +1,5 @@
 pub mod aexpr;
+pub mod bexpr;
 pub use aexpr::AExpr;
 pub use aexpr::val;
 pub use aexpr::var;
