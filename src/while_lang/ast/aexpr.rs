@@ -1,65 +1,29 @@
 
 #[derive(Debug)]
-pub enum AExpr <'a> {
+pub enum AExpr {
     Value(i64),
-    Add(&'a AExpr<'a>, &'a AExpr<'a>),
-    Sub(&'a AExpr<'a>, &'a AExpr<'a>),
+    Variable(String),
+    Add(Box<AExpr>, Box<AExpr>),
+    Sub(Box<AExpr>, Box<AExpr>),
+    Mul(Box<AExpr>, Box<AExpr>),
 }
-//pub fn value <'a> (v: i64) -> &'a AExpr<'a> {
-//    let result = AExpr::Value(v);
-//    return &result;
-//}
-pub fn eval <'a> (expr: &'a AExpr<'a>) -> i64 {
-    match expr {
-        AExpr::Value(v) => *v,
-        AExpr::Add(a, b) => eval(a) + eval(b),
-        AExpr::Sub(a, b) => eval(a) - eval(b),
-    }
-}
+type BoxedAExpr = Box<AExpr>;
 
-#[test]
-pub fn example () {
-    let a = AExpr::Value(10);
-    let b = AExpr::Value(12);
-    let c = AExpr::Value(4);
-    let s = AExpr::Sub(&a, &b);
-    let expr = AExpr::Add(&c, &s);
-    assert_eq!(eval(&expr), -18);
+macro_rules!make_ctor {
+    ( $name:ident ($x1:ident: $t1:ident) -> $Container:ident < $Type:ident :: $Tag:ident > ) => {
+        pub fn $name ($x1: $t1) -> $Container<$Type> {
+            return $Container::new($Type::$Tag($x1));
+        }
+    };
+    ( $name:ident ($x1:ident: $t1:ident, $x2:ident: $t2:ident) -> $Container:ident < $Type:ident :: $Tag:ident > ) => {
+        pub fn $name ($x1: $t1, $x2: $t2) -> $Container<$Type> {
+            return $Container::new($Type::$Tag($x1, $x2));
+        }
+    };
 }
 
-
-
-
-
-
-
-
-
-
-//pub fn value <'a> (v: i64) -> &'a mut AExpr<'a>
-
-//    return AExpr::Value(v);
-//}
-//use std::ops;
-//impl <'a> ops::Add<AExpr<'a>> for AExpr<'a>
-//    type Output = AExpr<'a>;
-//    fn add(self: &mut AExpr<'a>, rhs: &mut AExpr<'a>) -> AExpr<'a> {
-//        return AExpr::Add(self, rhs);
-//    }
-//}
-
-//im
-// pl ops::Sub<AExp> for AExp {
-//    type Output = AExp;
-//    fn sub (self, rhs: AExp) -> AExp {
-//
-//
-//
-//
-//
-//       return Box::new(AExpr::Sub(self, rhs));
-//    }
-//}
-//fn foo () -> AExp {
-//    return value(10) + value(20);
-//}
+make_ctor!(val (v: i64) -> Box<AExpr::Value>);
+make_ctor!(var (v: String) -> Box<AExpr::Variable>);
+make_ctor!(add (left: BoxedAExpr, right: BoxedAExpr) -> Box<AExpr::Add>);
+make_ctor!(sub (left: BoxedAExpr, right: BoxedAExpr) -> Box<AExpr::Sub>);
+make_ctor!(mul (left: BoxedAExpr, right: BoxedAExpr) -> Box<AExpr::Mul>);
