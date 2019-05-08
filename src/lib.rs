@@ -4,8 +4,10 @@ mod while_lang;
 mod tests {
     #[test]
     fn arith () {
-        use crate::while_lang::ast::aexpr;
-        assert_eq!(eval(AExpr::Value(10)), 10);
-        assert_eq!(eval(Value(-10)), -10);
+        use crate::while_lang::ast::AExpr;
+        use crate::while_lang::ast::value;
+        use crate::while_lang::eval;
+        assert_eq!(eval(value(10)), 10);
+        assert_eq!(eval(value(-10)), -10);
     }
 }
