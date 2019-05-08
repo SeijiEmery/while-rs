@@ -1,3 +1,4 @@
+#![macro_use]
 mod while_lang;
 
 #[cfg(test)]
