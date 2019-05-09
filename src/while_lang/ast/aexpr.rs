@@ -4,18 +4,97 @@ use crate::while_lang::types::State;
 //use std::ops::Add;
 //use std::ops::Sub;
 //use std::ops::Mul;
+use std::cell::RefCell;
 use std::rc::Rc;
+
 
 #[derive(Debug, Clone, PartialOrd, PartialEq)]
 pub enum AExpr {
     Value(Value),
     Variable(Variable),
-    Add(Rc<AExpr>, Rc<AExpr>),
-    Sub(Rc<AExpr>, Rc<AExpr>),
-    Mul(Rc<AExpr>, Rc<AExpr>),
+    Add(ARef, ARef),
+    Sub(ARef, ARef),
+    Mul(ARef, ARef),
 }
-pub fn pureEvalStep (ast: &Rc<AExpr>, state: &State) -> Result<Rc<AExpr>, String> {
-    return match **ast {
+pub type ARef = Rc<RefCell<AExpr>>;
+
+// constructors
+pub fn val (v: Value) -> ARef { Rc::new(RefCell::new(AExpr::Value(v))) }
+pub fn var (v: &str) -> ARef { Rc::new(RefCell::new(AExpr::Variable(v.to_string()))) }
+pub fn add (a: ARef, b: ARef) -> ARef {Rc::new(RefCell::new(AExpr::Add(a, b))) }
+pub fn sub (a: ARef, b: ARef) -> ARef {Rc::new(RefCell::new(AExpr::Sub(a, b))) }
+pub fn mul (a: ARef, b: ARef) -> ARef {Rc::new(RefCell::new(AExpr::Mul(a, b))) }
+
+// recursive eager eval
+pub fn eval (ast: &ARef, state: &State) -> Result<Value, String> {
+    return match *(ast.borrow_mut()) {
+        AExpr::Value(v) => Ok(v),
+        AExpr::Variable(ref v) => state.get(&v),
+        AExpr::Add(ref a, ref b) => evalBinary(|a, b| a + b, a, b, state),
+        AExpr::Sub(ref a, ref b) => evalBinary(|a, b| a - b, a, b, state),
+        AExpr::Mul(ref a, ref b) => evalBinary(|a, b| a * b, a, b, state),
+    }
+}
+fn evalBinary <F>(f: F, left: &ARef, right: &ARef, state: &State) -> Result<Value, String>
+    where F: FnOnce(Value, Value) -> Value
+{
+    return match eval(left, state) {
+        Ok(a) => match eval(right, state) {
+            Ok(b) => Ok(f(a, b)),
+            err => err,
+        },
+        err => err
+    };
+}
+
+// lazy single-step eval
+pub fn evalStep (ast: &mut ARef, state: &State, result: &mut Result<bool, String>) -> bool {
+    return match *(ast.borrow_mut()) {
+        AExpr::Value(_) => false,
+        AExpr::Variable(ref v) => match state.get(&v) {
+            Ok(v) => { *ast = val(v); true }
+            Err(msg) => { *result = Err(msg); true }
+        },
+        AExpr::Add(ref mut a, ref mut b) => {
+            match *(a.borrow_mut()) {
+                AExpr::Value(a) => match *(b.borrow_mut()) {
+                    AExpr::Value(b) => {
+                        *ast = val(a + b);
+                        true
+                    }
+                    _ => evalStep(b, state, result)
+                },
+                _ => evalStep(a, state, result)
+            }
+        },
+        AExpr::Sub(ref mut a, ref mut b) => {
+            match *(a.borrow_mut()) {
+                AExpr::Value(a) => match *(b.borrow_mut()) {
+                    AExpr::Value(b) => {
+                        *ast = val(a - b);
+                        true
+                    }
+                    _ => evalStep(b, state, result)
+                },
+                _ => evalStep(a, state, result)
+            }
+        },
+        AExpr::Mul(ref mut a, ref mut b) => {
+            match *(a.borrow_mut()) {
+                AExpr::Value(a) => match *(b.borrow_mut()) {
+                    AExpr::Value(b) => {
+                        *ast = val(a * b);
+                        true
+                    }
+                    _ => evalStep(b, state, result)
+                },
+                _ => evalStep(a, state, result)
+            }
+        },
+    }
+}
+pub fn pureEvalStep (ast: &ARef, state: &State) -> Result<ARef, String> {
+    return match *(ast.borrow()) {
         AExpr::Add(ref a, ref b) => pureEvalBinary(
             |a, b| a + b,
             |a, b| add(a, b),
@@ -35,12 +114,12 @@ pub fn pureEvalStep (ast: &Rc<AExpr>, state: &State) -> Result<Rc<AExpr>, String
         AExpr::Value(_) => Ok(ast.clone())
     }
 }
-fn pureEvalBinary <F, C>(f: F, c: C, left: &Rc<AExpr>, right: &Rc<AExpr>, state: &State) -> Result<Rc<AExpr>, String>
-    where F: FnOnce(Value, Value) -> Value, C: FnOnce(Rc<AExpr>, Rc<AExpr>) -> Rc<AExpr>
+fn pureEvalBinary <F, C>(f: F, c: C, left: &ARef, right: &ARef, state: &State) -> Result<ARef, String>
+    where F: FnOnce(Value, Value) -> Value, C: FnOnce(ARef, ARef) -> ARef
 {
-    return match **left {
-        AExpr::Value(a) => match **right {
-            AExpr::Value(b) => Ok(Rc::new(AExpr::Value(f(a, b)))),
+    return match *(left.borrow()) {
+        AExpr::Value(a) => match *(right.borrow()) {
+            AExpr::Value(b) => Ok(val(f(a, b))),
             _ => match pureEvalStep(right, state) {
                 Ok(right) => Ok(c(left.clone(), right.clone())),
                 Err(msg) => Err(msg),
@@ -55,81 +134,8 @@ fn pureEvalBinary <F, C>(f: F, c: C, left: &Rc<AExpr>, right: &Rc<AExpr>, state:
 
 
 
-fn unsafeGetValue (ast: &Rc<AExpr>) -> Value {
-    return match **ast {
-        AExpr::Value(a) => a,
-        _ => panic!(format!("{:?} is not a value!", *ast))
-    }
-}
-pub fn evalStep (ast: &mut Rc<AExpr>, state: &State, result: &mut Result<bool, String>) -> bool {
-    return match **ast {
-        AExpr::Add(ref mut a, ref mut b) => {
-            if !evalStep(a, state, result) && !evalStep(b, state, result) {
-                *ast = Rc::new(AExpr::Value(unsafeGetValue(&a) + unsafeGetValue(&b)));
-            }
-            true
-        },
-        AExpr::Sub(ref mut a, ref mut b) => {
-            if !evalStep(a, state, result) && !evalStep(b, state, result) {
-                *ast = Rc::new(AExpr::Value(unsafeGetValue(&a) - unsafeGetValue(&b)));
-            }
-            true
-        },
-        AExpr::Mul(ref mut a, ref mut b) => {
-            if !evalStep(a, state, result) && !evalStep(b, state, result) {
-                *ast = Rc::new(AExpr::Value(unsafeGetValue(&a) * unsafeGetValue(&b)));
-            }
-            true
-        },
-        AExpr::Variable(ref v) => {
-            match state.get(&v) {
-                Ok(a) => *ast = Rc::new(AExpr::Value(a)),
-                Err(msg) => *result = Err(msg),
-            }
-            true
-        },
-        AExpr::Value(_) => false
-    }
-}
-pub fn eval (ast: &Rc<AExpr>, state: &State) -> Result<Value, String> {
-    return match **ast {
-        AExpr::Value(v) => Ok(v),
-        AExpr::Variable(ref v) => state.get(&v),
-        AExpr::Add(ref a, ref b) => evalBinary(|a, b| a + b, a, b, state),
-        AExpr::Sub(ref a, ref b) => evalBinary(|a, b| a - b, a, b, state),
-        AExpr::Mul(ref a, ref b) => evalBinary(|a, b| a * b, a, b, state),
-    }
-}
-fn evalBinary <F>(f: F, left: &Rc<AExpr>, right: &Rc<AExpr>, state: &State) -> Result<Value, String>
-    where F: FnOnce(Value, Value) -> Value
-{
-    return match eval(left, state) {
-        Ok(a) => match eval(right, state) {
-            Ok(b) => Ok(f(a, b)),
-            err => err,
-        },
-        err => err
-    };
-}
 
-macro_rules! make_ctor {
-    ( $name:ident ($x1:ident: $t1:ident) -> $Container:ident < $Type:ident :: $Tag:ident > ) => {
-        pub fn $name ($x1: $t1) -> $Container<$Type> {
-            return $Container::new($Type::$Tag($x1));
-        }
-    };
-    ( $name:ident ($x1:ident: $t1:ident, $x2:ident: $t2:ident) -> $Container:ident < $Type:ident :: $Tag:ident > ) => {
-        pub fn $name ($x1: $t1, $x2: $t2) -> $Container<$Type> {
-            return $Container::new($Type::$Tag($x1, $x2));
-        }
-    };
-}
-type RcedAExpr = Rc<AExpr>;
-make_ctor!(val (v: Value) -> Rc<AExpr::Value>);
-pub fn var (v: &str) -> RcedAExpr { return Rc::new(AExpr::Variable(v.to_string())); }
-make_ctor!(add (left: RcedAExpr, right: RcedAExpr) -> Rc<AExpr::Add>);
-make_ctor!(sub (left: RcedAExpr, right: RcedAExpr) -> Rc<AExpr::Sub>);
-make_ctor!(mul (left: RcedAExpr, right: RcedAExpr) -> Rc<AExpr::Mul>);
+
 
 //macro_rules! implement_operator_ctor {
 //    ( $Trait:ident :: $name:ident (
@@ -156,6 +162,6 @@ make_ctor!(mul (left: RcedAExpr, right: RcedAExpr) -> Rc<AExpr::Mul>);
 //        }
 //    };
 //}
-//implement_operator_ctor!(Add::add (Rc<AExpr>, Rc<AExpr>) -> Rc<AExpr::Add>);
-//implement_operator_ctor!(Sub::sub (Rc<AExpr>, Rc<AExpr>) -> Rc<AExpr::Sub>);
-//implement_operator_ctor!(Mul::mul (Rc<AExpr>, Rc<AExpr>) -> Rc<AExpr::Mul>);
+//implement_operator_ctor!(Add::add (ARef, ARef) -> Rc<AExpr::Add>);
+//implement_operator_ctor!(Sub::sub (ARef, ARef) -> Rc<AExpr::Sub>);
+//implement_operator_ctor!(Mul::mul (ARef, ARef) -> Rc<AExpr::Mul>);

@@ -25,7 +25,7 @@ mod tests {
         assert_eq!(eval(&sub(val(2), val(4)), &empty), Ok(-2));
         assert_eq!(eval(&mul(val(2), val(4)), &empty), Ok(8));
     }
-
+/*
     #[test]
     fn arith_step_tests () {
         use crate::while_lang::ast::aexpr::val;
@@ -117,7 +117,7 @@ mod tests {
             assert_eq!(ast, val(0));
         }
     }
-
+*//*
     #[test]
     fn bool_tests () {
         use crate::while_lang::ast::bexpr::btrue;
@@ -163,4 +163,5 @@ mod tests {
         assert_eq!(eval(&less(val(11), var("x")), &x10), Ok(false));
         assert_eq!(eval(&less(val(10), var("y")), &x10).is_err(), true);
     }
+    */
 }
