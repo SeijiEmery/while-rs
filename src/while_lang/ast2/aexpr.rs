@@ -1,25 +1,6 @@
-use std::fmt::format;
-use std::fmt;
-use std::cmp;
 use std::rc::Rc;
-
-pub type Value = i64;
-pub type VResult = Result<Value, String>;
-pub type AResult = Result<ARef, String>;
-
-pub trait State {
-    fn get (&self, var: &str) -> VResult;
-    fn set (&mut self, var: &str, val: Value);
-}
-pub trait Expr <Value, AST>: fmt::Debug {
-    fn eval (&self, state: &State) -> Result<Value, String>;
-    fn eval1 (&self, state: &State) -> Result<AST, String>;
-    fn is_reduced (&self) -> bool;
-}
-
-
-#[derive(Debug, PartialEq, PartialOrd, Clone)]
-enum BinOp { Add, Sub, Mul }
+use super::expr::Expr;
+use super::state::{ State, Value, VResult };
 
 #[derive(Debug, PartialOrd, PartialEq)]
 enum AExpr {
@@ -28,6 +9,10 @@ enum AExpr {
     Binary(BinOp, ARef, ARef)
 }
 pub type ARef = Rc<AExpr>;
+pub type AResult = Result<ARef, String>;
+
+#[derive(Debug, PartialEq, PartialOrd, Clone)]
+enum BinOp { Add, Sub, Mul }
 
 // constructors
 pub fn val (v: Value) -> ARef { Rc::new(AExpr::Val(v)) }
@@ -37,8 +22,8 @@ pub fn add (a: ARef, b: ARef) -> ARef { binop(BinOp::Add, a, b) }
 pub fn sub (a: ARef, b: ARef) -> ARef { binop(BinOp::Sub, a, b) }
 pub fn mul (a: ARef, b: ARef) -> ARef { binop(BinOp::Mul, a, b) }
 
+// Expr impl
 impl Expr<Value, ARef> for ARef {
-
     /// Values (terminals) are reduced. Everything else is not.
     fn is_reduced (&self) -> bool {
         return match **self {
@@ -101,36 +86,10 @@ impl Expr<Value, ARef> for ARef {
         return self.eval(state).map(|x| val(x));
     }
 }
-
-#[derive(Debug, PartialEq)]
-struct MockEmptyState();
-impl MockEmptyState { fn new () -> MockEmptyState { MockEmptyState() } }
-impl State for MockEmptyState {
-    fn get (&self, var: &str) -> VResult { Err(format!("undefined variable '{}'!", var)) }
-    fn set (&mut self, var: &str, val: Value) {}
-}
-
-#[derive(Debug, PartialEq)]
-struct MockStateWithVar { var: String, val: Value }
-impl MockStateWithVar {
-    fn new (var: &str, val: Value) -> MockStateWithVar {
-        MockStateWithVar { var: var.to_string(), val }
-    }
-}
-impl State for MockStateWithVar {
-    fn get (&self, var: &str) -> VResult {
-        if var == self.var {
-            Ok(self.val)
-        } else {
-            Err(format!("undefined variable '{}'!", var))
-        }
-    }
-    fn set (&mut self, var: &str, val: Value) {}
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use super::super::state_mocks::{ MockEmptyState, MockStateWithVar };
 
     #[test]
     fn test_val () {
