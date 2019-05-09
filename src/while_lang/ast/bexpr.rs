@@ -13,15 +13,15 @@ pub enum BExpr {
     Not(Rc<BExpr>),
     Or(Rc<BExpr>, Rc<BExpr>),
     And(Rc<BExpr>, Rc<BExpr>),
-    Less(Box<AExpr>, Box<AExpr>),
-    Equal(Box<AExpr>, Box<AExpr>),
+    Less(Rc<AExpr>, Rc<AExpr>),
+    Equal(Rc<AExpr>, Rc<AExpr>),
 }
 pub fn evalStep (ast: &mut Rc<BExpr>, state: &State, result: &mut Result<bool, String>) -> bool {
     return match **ast {
-        BExpr::Value(v) => false,
+        BExpr::Value(_) => false,
         BExpr::Not(ref mut a) => match **a {
-            BExpr::Value(true) => { *ast = bfalse.clone(); true }
-            BExpr::Value(false) => { *ast = btrue.clone(); true }
+            BExpr::Value(true) => { *ast = bfalse().clone(); true }
+            BExpr::Value(false) => { *ast = btrue().clone(); true }
             _ => evalStep(a, state, result)
         },
         BExpr::Or(ref mut a, ref mut b) => match **a {
@@ -43,8 +43,8 @@ pub fn evalStep (ast: &mut Rc<BExpr>, state: &State, result: &mut Result<bool, S
         BExpr::Less(ref mut a, ref mut b) => match **a {
             AExpr::Value(ref mut a) => match **b {
                 AExpr::Value(ref mut b) => match a < b {
-                    true => { *ast = btrue.clone(); true },
-                    false => { *ast = bfalse.clone(); true },
+                    true => { *ast = btrue(); true },
+                    false => { *ast = bfalse(); true },
                 },
                 _ => aexpr::evalStep(b, state, result)
             },
@@ -53,8 +53,8 @@ pub fn evalStep (ast: &mut Rc<BExpr>, state: &State, result: &mut Result<bool, S
         BExpr::Equal(ref mut a, ref mut b) => match **a {
             AExpr::Value(ref mut a) => match **b {
                 AExpr::Value(ref mut b) => match a == b {
-                    true => { *ast = btrue.clone(); true },
-                    false => { *ast = bfalse.clone(); true },
+                    true => { *ast = btrue(); true },
+                    false => { *ast = bfalse(); true },
                 },
                 _ => aexpr::evalStep(b, state, result)
             },
@@ -63,17 +63,17 @@ pub fn evalStep (ast: &mut Rc<BExpr>, state: &State, result: &mut Result<bool, S
     }
 }
 
-pub fn eval (ast: Rc<BExpr>, state: &State) -> Result<bool, String> {
-    return match *ast {
-        BExpr::Value(ref v) => Ok(*v),
-        BExpr::Not(ref a) => eval(*a, state).map(|a| !a),
+pub fn eval (ast: &Rc<BExpr>, state: &State) -> Result<bool, String> {
+    return match **ast {
+        BExpr::Value(v) => Ok(v),
+        BExpr::Not(ref a) => eval(a, state).map(|a| !a),
         BExpr::Or(ref a, ref b) => evalBinary(|a, b| a || b, a, b, state),
         BExpr::And(ref a, ref b) => evalBinary(|a, b| a && b, a, b, state),
         BExpr::Less(ref a, ref b) => evalCmp(|a, b| a < b, a, b, state),
         BExpr::Equal(ref a, ref b) => evalCmp(|a, b| a == b, a, b, state),
     }
 }
-fn evalBinary <F>(f: F, left: Rc<BExpr>, right: Rc<BExpr>, state: &State) -> Result<bool, String>
+fn evalBinary <F>(f: F, left: &Rc<BExpr>, right: &Rc<BExpr>, state: &State) -> Result<bool, String>
     where F: FnOnce(bool, bool) -> bool
 {
     return match eval(left, state) {
@@ -84,7 +84,7 @@ fn evalBinary <F>(f: F, left: Rc<BExpr>, right: Rc<BExpr>, state: &State) -> Res
         err => err
     };
 }
-fn evalCmp <F>(f: F, left: Rc<AExpr>, right: Rc<AExpr>, state: &State) -> Result<bool, String>
+fn evalCmp <F>(f: F, left: &Rc<AExpr>, right: &Rc<AExpr>, state: &State) -> Result<bool, String>
     where F: FnOnce(Value, Value) -> bool
 {
     use super::aexpr;
@@ -113,8 +113,11 @@ macro_rules!make_ctor {
 type RcedAExpr = Rc<AExpr>;
 type RcedBExpr = Rc<BExpr>;
 
-pub fn btrue () -> RcedBExpr { return Rc::new(BExpr::Value(true)); }
-pub fn bfalse () -> RcedBExpr { return Rc::new(BExpr::Value(false)); }
+static TRUE : RcedBExpr = Rc::new(BExpr::Value(true));
+static FALSE : RcedBExpr = Rc::new(BExpr::Value(false));
+
+pub fn btrue () -> RcedBExpr { return TRUE.clone(); }
+pub fn bfalse () -> RcedBExpr { return FALSE.clone(); }
 make_ctor!(not (expr: RcedBExpr) -> Rc<BExpr::Not>);
 make_ctor!(or (left: RcedBExpr, right: RcedBExpr) -> Rc<BExpr::Or>);
 make_ctor!(and (left: RcedBExpr, right: RcedBExpr) -> Rc<BExpr::And>);

@@ -1,9 +1,9 @@
 use crate::while_lang::types::Value;
 use crate::while_lang::types::Variable;
 use crate::while_lang::types::State;
-use std::ops::Add;
-use std::ops::Sub;
-use std::ops::Mul;
+//use std::ops::Add;
+//use std::ops::Sub;
+//use std::ops::Mul;
 use std::rc::Rc;
 
 #[derive(Debug, Clone, PartialOrd, PartialEq)]
@@ -14,40 +14,40 @@ pub enum AExpr {
     Sub(Rc<AExpr>, Rc<AExpr>),
     Mul(Rc<AExpr>, Rc<AExpr>),
 }
-pub fn pureEvalStep (ast: Rc<AExpr>, state: &State) -> Result<Rc<AExpr>, String> {
-    return match *ast {
-        AExpr::Add(a, b) => pureEvalBinary(
+pub fn pureEvalStep (ast: &Rc<AExpr>, state: &State) -> Result<Rc<AExpr>, String> {
+    return match **ast {
+        AExpr::Add(ref a, ref b) => pureEvalBinary(
             |a, b| a + b,
-            |a, b| Rc::new(AExpr::Add(a, b)),
+            |a, b| add(a, b),
             a, b, state),
-        AExpr::Sub(a, b) => pureEvalBinary(
+        AExpr::Sub(ref a, ref b) => pureEvalBinary(
             |a, b| a - b,
-            |a, b| Rc::new(AExpr::Sub(a, b)),
+            |a, b| sub(a, b),
             a, b, state),
-        AExpr::Mul(a, b) => pureEvalBinary(
+        AExpr::Mul(ref a, ref b) => pureEvalBinary(
             |a, b| a * b,
-            |a, b| Rc::new(AExpr::Mul(a, b)),
+            |a, b| mul(a, b),
             a, b, state),
-        AExpr::Variable(v) => match state.get(&v) {
-            Ok(a) => Rc::new(AExpr::Value),
+        AExpr::Variable(ref v) => match state.get(&v) {
+            Ok(a) => Ok(val(a)),
             Err(msg) => Err(msg),
         },
-        AExpr::Value(_) => Ok(ast)
+        AExpr::Value(_) => Ok(ast.clone())
     }
 }
-fn pureEvalBinary <F, C>(f: F, c: C, left: Rc<AExpr>, right: Rc<AExpr>, state: &State) -> Result<Rc<AExpr>, String>
+fn pureEvalBinary <F, C>(f: F, c: C, left: &Rc<AExpr>, right: &Rc<AExpr>, state: &State) -> Result<Rc<AExpr>, String>
     where F: FnOnce(Value, Value) -> Value, C: FnOnce(Rc<AExpr>, Rc<AExpr>) -> Rc<AExpr>
 {
-    return match *left {
-        AExpr::Value(a) => match *right {
+    return match **left {
+        AExpr::Value(a) => match **right {
             AExpr::Value(b) => Ok(Rc::new(AExpr::Value(f(a, b)))),
             _ => match pureEvalStep(right, state) {
-                Ok(right) => Ok(c(left, right)),
+                Ok(right) => Ok(c(left.clone(), right.clone())),
                 Err(msg) => Err(msg),
             }
         },
         _ => match pureEvalStep(left, state) {
-            Ok(left) => Ok(c(left, right)),
+            Ok(left) => Ok(c(left.clone(), right.clone())),
             Err(msg) => Err(msg),
         }
     };
@@ -91,16 +91,16 @@ pub fn evalStep (ast: &mut Rc<AExpr>, state: &State, result: &mut Result<bool, S
         AExpr::Value(_) => false
     }
 }
-pub fn eval (ast: Rc<AExpr>, state: &State) -> Result<Value, String> {
-    return match *ast {
+pub fn eval (ast: &Rc<AExpr>, state: &State) -> Result<Value, String> {
+    return match **ast {
         AExpr::Value(v) => Ok(v),
-        AExpr::Variable(v) => state.get(&v),
-        AExpr::Add(a, b) => evalBinary(|a, b| a + b, a, b, state),
-        AExpr::Sub(a, b) => evalBinary(|a, b| a - b, a, b, state),
-        AExpr::Mul(a, b) => evalBinary(|a, b| a * b, a, b, state),
+        AExpr::Variable(ref v) => state.get(&v),
+        AExpr::Add(ref a, ref b) => evalBinary(|a, b| a + b, a, b, state),
+        AExpr::Sub(ref a, ref b) => evalBinary(|a, b| a - b, a, b, state),
+        AExpr::Mul(ref a, ref b) => evalBinary(|a, b| a * b, a, b, state),
     }
 }
-fn evalBinary <F>(f: F, left: Rc<AExpr>, right: Rc<AExpr>, state: &State) -> Result<Value, String>
+fn evalBinary <F>(f: F, left: &Rc<AExpr>, right: &Rc<AExpr>, state: &State) -> Result<Value, String>
     where F: FnOnce(Value, Value) -> Value
 {
     return match eval(left, state) {
@@ -131,31 +131,31 @@ make_ctor!(add (left: RcedAExpr, right: RcedAExpr) -> Rc<AExpr::Add>);
 make_ctor!(sub (left: RcedAExpr, right: RcedAExpr) -> Rc<AExpr::Sub>);
 make_ctor!(mul (left: RcedAExpr, right: RcedAExpr) -> Rc<AExpr::Mul>);
 
-macro_rules! implement_operator_ctor {
-    ( $Trait:ident :: $name:ident (
-        $CL:ident < $TL:ident > ,
-        $CR:ident < $TR:ident > ) ->
-        $Container:ident < $Type:ident :: $Tag:ident >
-    ) => {
-        impl $Trait for $CL<$TL> {
-            type Output = $Container<$Type>;
-            fn $name (self, rhs: $CR<$TR>) -> $Container<$Type> {
-                return $Container::new($Type::$Tag(self, rhs));
-            }
-        }
-    };
-    ( $Trait:ident :: $name:ident (
-        $CL:ident < $TL:ident > ) ->
-        $Container:ident < $Type:ident :: $Tag:ident >
-    ) => {
-        impl $Trait for $CL<$TL> {
-            type Output = $Container<$Type>;
-            fn $name (self) -> $Container<$Type> {
-                return $Container::new($Type::$Tag(self, rhs));
-            }
-        }
-    };
-}
-implement_operator_ctor!(Add::add (Rc<AExpr>, Rc<AExpr>) -> Rc<AExpr::Add>);
-implement_operator_ctor!(Sub::sub (Rc<AExpr>, Rc<AExpr>) -> Rc<AExpr::Sub>);
-implement_operator_ctor!(Mul::mul (Rc<AExpr>, Rc<AExpr>) -> Rc<AExpr::Mul>);
+//macro_rules! implement_operator_ctor {
+//    ( $Trait:ident :: $name:ident (
+//        $CL:ident < $TL:ident > ,
+//        $CR:ident < $TR:ident > ) ->
+//        $Container:ident < $Type:ident :: $Tag:ident >
+//    ) => {
+//        impl $Trait for $CL<$TL> {
+//            type Output = $Container<$Type>;
+//            fn $name (self, rhs: $CR<$TR>) -> $Container<$Type> {
+//                return $Container::new($Type::$Tag(self, rhs));
+//            }
+//        }
+//    };
+//    ( $Trait:ident :: $name:ident (
+//        $CL:ident < $TL:ident > ) ->
+//        $Container:ident < $Type:ident :: $Tag:ident >
+//    ) => {
+//        impl $Trait for $CL<$TL> {
+//            type Output = $Container<$Type>;
+//            fn $name (self) -> $Container<$Type> {
+//                return $Container::new($Type::$Tag(self, rhs));
+//            }
+//        }
+//    };
+//}
+//implement_operator_ctor!(Add::add (Rc<AExpr>, Rc<AExpr>) -> Rc<AExpr::Add>);
+//implement_operator_ctor!(Sub::sub (Rc<AExpr>, Rc<AExpr>) -> Rc<AExpr::Sub>);
+//implement_operator_ctor!(Mul::mul (Rc<AExpr>, Rc<AExpr>) -> Rc<AExpr::Mul>);

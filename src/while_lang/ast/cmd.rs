@@ -1,4 +1,4 @@
-use crate::while_lang::types::Value;
+//use crate::while_lang::types::Value;
 use crate::while_lang::types::Variable;
 use crate::while_lang::types::State;
 use super::aexpr::AExpr;
@@ -10,7 +10,7 @@ use std::rc::Rc;
 #[derive(Debug, PartialOrd, PartialEq)]
 pub enum Cmd {
     Skip,
-    Assign(Variable, Box<AExpr>),
+    Assign(Variable, Rc<AExpr>),
     Seq(Rc<Cmd>, Rc<Cmd>),
     If(Rc<BExpr>, Rc<Cmd>, Rc<Cmd>),
     While(Rc<BExpr>, Rc<BExpr>, Rc<Cmd>),
@@ -34,22 +34,22 @@ pub fn evalStep (ast: &mut Rc<Cmd>, state: &mut State, result: &mut Result<bool,
         Cmd::Assign(ref v, ref mut expr) => match **expr {
             AExpr::Value(ref a) => {
                 state.set(v, *a);
-                *ast.clone_from(&SKIP);
+                *ast = skip();
                 true
             },
             _ => aexpr::evalStep(expr, state, result)
         },
         Cmd::Seq(ref mut a, ref mut b) => match **a {
-            Cmd::Skip => { *ast.clone_from(b); true },
+            Cmd::Skip => { *ast = b.clone(); true },
             _ => evalStep(a, state, result)
         },
         Cmd::If(ref mut cond, ref mut a, ref mut b) => match **cond {
-            BExpr::Value(true) => { *ast.clone_from(a); true },
-            BExpr::Value(false) => { *ast.clone_from(b); true },
+            BExpr::Value(true) => { *ast = a.clone(); true },
+            BExpr::Value(false) => { *ast = b.clone(); true },
             _ => bexpr::evalStep(cond, state, result)
         },
         Cmd::While(ref mut cond, ref mut c0, ref mut body) => match **cond {
-            BExpr::Value(false) => { *ast.clone_from(&SKIP); true },
+            BExpr::Value(false) => { *ast = skip(); true },
             BExpr::Value(true) => {
                 cond.clone_from(c0);
                 *ast = Rc::new(Cmd::Seq(body.clone(), ast.clone()));
