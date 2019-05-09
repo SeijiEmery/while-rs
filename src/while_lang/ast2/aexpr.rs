@@ -164,35 +164,35 @@ mod tests {
         let state_empty = MockEmptyState::new();
         let state_x_10 = MockStateWithVar::new("x", 10);
 
-        assert_eq!(var("x").is_reduced(), false);
-        assert_eq!(var("x").eval(&state_empty).is_err(), true);
-        assert_eq!(var("x").eval(&state_x_10).is_err(), false);
-        assert_eq!(var("x").eval(&state_x_10), Ok(10));
-        assert_eq!(var("y").eval(&state_x_10).is_err(), true);
+        assert_eq!(false, var("x").is_reduced());
+        assert_eq!(true, var("x").eval(&state_empty).is_err());
+        assert_eq!(false, var("x").eval(&state_x_10).is_err());
+        assert_eq!(Ok(10), var("x").eval(&state_x_10));
+        assert_eq!(true, var("y").eval(&state_x_10).is_err());
 
-        assert_eq!(var("x").eval1(&state_empty).is_err(), true);
-        assert_eq!(var("x").eval1(&state_x_10).is_err(), false);
-        assert_eq!(var("x").eval1(&state_x_10), Ok(val(10)));
-        assert_eq!(var("y").eval1(&state_x_10).is_err(), true);
+        assert_eq!(true, var("x").eval1(&state_empty).is_err());
+        assert_eq!(false, var("x").eval1(&state_x_10).is_err());
+        assert_eq!(Ok(val(10)), var("x").eval1(&state_x_10));
+        assert_eq!(true, var("y").eval1(&state_x_10).is_err());
 
         let res : ARef = var("x").eval1(&state_x_10).unwrap();
-        assert_eq!(res.is_reduced(), true);
-        assert_eq!(res.eval(&state_empty), Ok(10));
-        assert_eq!(res.eval1(&state_empty), Ok(res));
+        assert_eq!(true, res.is_reduced());
+        assert_eq!(Ok(10), res.eval(&state_empty));
+        assert_eq!(Ok(res.clone()), res.eval1(&state_empty));
     }
     #[test]
     fn test_binary_eval () {
         let state_empty = MockEmptyState::new();
         let state_x_10 = MockStateWithVar::new("x", 10);
 
-        assert_eq!(add(val(10), val(10)).eval(&state_empty), Ok(20));
-        assert_eq!(sub(val(10), val(10)).eval(&state_empty), Ok(0));
-        assert_eq!(mul(val(10), val(10)).eval(&state_empty), Ok(100));
+        assert_eq!(Ok(20), add(val(10), val(10)).eval(&state_empty));
+        assert_eq!(Ok(0), sub(val(10), val(10)).eval(&state_empty));
+        assert_eq!(Ok(100), mul(val(10), val(10)).eval(&state_empty));
 
-        assert_eq!(add(var("x"), val(10)).eval(&state_x_10), Ok(20));
-        assert_eq!(add(val(10), var("x")).eval(&state_x_10), Ok(20));
-        assert_eq!(add(var("x"), val(10)).eval(&state_empty).is_err(), true);
-        assert_eq!(add(val(10), var("x")).eval(&state_empty).is_err(), true);
+        assert_eq!(Ok(20), add(var("x"), val(10)).eval(&state_x_10));
+        assert_eq!(Ok(20), add(val(10), var("x")).eval(&state_x_10));
+        assert_eq!(true, add(var("x"), val(10)).eval(&state_empty).is_err());
+        assert_eq!(true, add(val(10), var("x")).eval(&state_empty).is_err());
     }
     #[test]
     fn test_binary_stepping () {
@@ -205,45 +205,45 @@ mod tests {
         let a3 = val(6);
 
         assert_eq!(a.is_reduced(), false);
-        assert_eq!(a, a1);
-        assert_eq!(a.eval(&state), Ok(6));
-        assert_eq!(a, a0);
+        assert_eq!(a1, a);
+        assert_eq!(Ok(6), a.eval(&state));
+        assert_eq!(a0, a);
 
         let b = a.eval1(&state).unwrap();
-        assert_eq!(b.is_reduced(), false);
-        assert_eq!(a.eval(&state), Ok(6));
-        assert_eq!(a, a0);
-        assert_eq!(b.eval(&state), Ok(6));
-        assert_eq!(b, a1);
+        assert_eq!(false, b.is_reduced());
+        assert_eq!(Ok(6), a.eval(&state));
+        assert_eq!(a0, a);
+        assert_eq!(Ok(6), b.eval(&state));
+        assert_eq!(a1, b);
 
         let c = a.eval1(&state).unwrap();
-        assert_eq!(b, c);
+        assert_eq!(c, b);
 
         let b2 = b.eval1(&state).unwrap();
-        assert_eq!(b2.is_reduced(), false);
-        assert_eq!(b2.eval(&state), Ok(6));
-        assert_eq!(a, a0);
-        assert_eq!(b, a1);
-        assert_eq!(b2, a2);
+        assert_eq!(false, b2.is_reduced());
+        assert_eq!(Ok(6), b2.eval(&state));
+        assert_eq!(a0, a);
+        assert_eq!(a1, b);
+        assert_eq!(a2, b2);
 
         let b3 = b2.eval1(&state).unwrap();
-        assert_eq!(b3.is_reduced(), true);
-        assert_eq!(b3.eval(&state), Ok(6));
-        assert_eq!(a, a0);
-        assert_eq!(b, a1);
-        assert_eq!(b2, a2);
-        assert_eq!(b3, a3);
+        assert_eq!(true, b3.is_reduced());
+        assert_eq!(Ok(6), b3.eval(&state));
+        assert_eq!(a0, a);
+        assert_eq!(a1, b);
+        assert_eq!(a2, b2);
+        assert_eq!(a3, b3);
 
         let b4 = b3.eval1(&state).unwrap();
-        assert_eq!(b4.is_reduced(), true);
-        assert_eq!(b4.eval(&state), Ok(6));
-        assert_eq!(b4, b3);
+        assert_eq!(true, b4.is_reduced());
+        assert_eq!(Ok(6), b4.eval(&state));
+        assert_eq!(b3, b4);
 
         let mut ast = a;
-        assert_eq!(ast.is_reduced(), false);
+        assert_eq!(true, ast.is_reduced());
         while (!ast.is_reduced()) {
             ast = ast.eval1(&state).unwrap();
-            assert_eq!(ast.eval(&state), Ok(6));
+            assert_eq!(Ok(6), ast.eval(&state));
         }
     }
 }
