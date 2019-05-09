@@ -18,7 +18,7 @@ pub trait Expr <Value, AST>: fmt::Debug {
 }
 
 
-#[derive(Debug, PartialEq, PartialOrd)]
+#[derive(Debug, PartialEq, PartialOrd, Clone)]
 enum BinOp { Add, Sub, Mul }
 
 #[derive(Debug, PartialOrd, PartialEq)]
@@ -86,12 +86,10 @@ impl Expr<Value, ARef> for ARef {
             // been fully reduced. If that's the case,
             AExpr::Binary(ref op, ref a, ref b) => {
                 if !a.is_reduced() {
-                    let mut res= self.clone();
-                    return a.eval1(state).map(|a| { update_left(&mut res, a); res })
+                    return a.eval1(state).map(|a| binop(op.clone(), a, b.clone()));
                 }
                 if !b.is_reduced() {
-                    let mut res= self.clone();
-                    return b.eval1(state).map(|b| { update_right(&mut res, b); res })
+                    return b.eval1(state).map(|b| binop(op.clone(), a.clone(), b));
                 }
             }, _ => {}
         }
@@ -101,24 +99,6 @@ impl Expr<Value, ARef> for ARef {
         //
         // Note that Result.map() is monadic and forwards Err() values for us.
         return self.eval(state).map(|x| val(x));
-    }
-}
-fn update_left (ast: &mut ARef, left: ARef) {
-    match Rc::get_mut(ast) {
-        Some(ref mut ast) => match ast {
-            AExpr::Binary(ref mut op, ref mut a, ref mut b) => {
-                *a = left;
-            }, _ => {}
-        }, _ => {}
-    }
-}
-fn update_right (ast: &mut ARef, right: ARef) {
-    match Rc::get_mut(ast) {
-        Some(ref mut ast) => match ast {
-            AExpr::Binary(ref mut op, ref mut a, ref mut b) => {
-                *b = right;
-            }, _ => {}
-        }, _ => {}
     }
 }
 
@@ -211,11 +191,11 @@ mod tests {
         assert_eq!(Ok(a2.clone()), a1.eval1(&state));
         assert_eq!(Ok(a1.clone()), a0.eval1(&state));
 
-        assert_eq!(false, a4.eval1(&state).is_err());
-        assert_eq!(false, a3.eval1(&state).is_err());
-        assert_eq!(false, a2.eval1(&state).is_err());
-        assert_eq!(true, a1.eval1(&state).is_err());
-        assert_eq!(false, a0.eval1(&state).is_err());
+        assert_eq!(false, a4.eval1(&empty_state).is_err());
+        assert_eq!(false, a3.eval1(&empty_state).is_err());
+        assert_eq!(false, a2.eval1(&empty_state).is_err());
+        assert_eq!(true, a1.eval1(&empty_state).is_err());
+        assert_eq!(false, a0.eval1(&empty_state).is_err());
     }
     #[test]
     fn test_binary_stepping () {
@@ -271,7 +251,7 @@ mod tests {
         assert_eq!(b4, b5);
 
         let mut ast = a;
-        assert_eq!(true, ast.is_reduced());
+        assert_eq!(false, ast.is_reduced());
         while (!ast.is_reduced()) {
             ast = ast.eval1(&state).unwrap();
             assert_eq!(Ok(6), ast.eval(&state));
