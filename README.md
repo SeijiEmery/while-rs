@@ -4,7 +4,7 @@ This is a small-step while interpreter for CMPS 203.
 
 Note that this does not have a parser / interpreter frontend 
 (as that was not required for this assignment); correctness is 
-instead demonstrated through unittests.
+demonstrated through unittests.
 
 ## Build instructions
 
@@ -38,7 +38,8 @@ This and previous assignments are at:
 - <https://github.com/seijiemery/while> (HW 2, used haskell)
 - <https://github.com/SeijiEmery/Arith/tree/master/cpp> (HW 1, used c++ template metaprogramming)
 
-Note that arith includes a haskell version for reference, but this was not a haskell project, and the haskell code was
-just a direct translation of the c++ template code to show how the c++ template code worked (and demonstrate how the c++ 
-template system is effectively a pure functional programming language with pattern matching that operates on c++ types 
-and integers at compile time)
+Note that arith includes a haskell version for reference. This was not a haskell project, 
+but just included haskell code (as a direct, 1-1 translation) to show how the c++ template 
+code worked (and demonstrate how the c++ template system is effectively a pure functional 
+programming language with pattern matching, a la Haskell, that operates on c++ types and 
+integers at compile time)
