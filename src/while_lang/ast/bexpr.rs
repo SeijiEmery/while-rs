@@ -2,7 +2,6 @@ use std::rc::Rc;
 use super::expr::Expr;
 use super::state::{ State };
 use super::aexpr::{ ARef, AExpr };
-use super::aexpr;
 
 #[derive(Debug, PartialOrd, PartialEq)]
 pub enum BExpr {
@@ -33,7 +32,7 @@ impl Expr<bool, BRef> for BRef {
             _ => false
         }
     }
-    fn eval (&self, state: &State) -> Result<bool, String> {
+    fn eval (&self, _state: &State) -> Result<bool, String> {
         Err("unimplemented!".to_string())
     }
     fn eval1 (&self, state: &State) -> BResult {

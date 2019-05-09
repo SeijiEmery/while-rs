@@ -3,11 +3,9 @@ use super::expr::{ CmdExpr, Expr };
 use super::state::{ State, Variable };
 use super::aexpr::{ ARef, AExpr };
 use super::bexpr::{ BRef, BExpr };
-use super::aexpr;
-use super::bexpr;
 
 #[derive(Debug, PartialOrd, PartialEq)]
-enum Cmd {
+pub enum Cmd {
     Skip,
     Seq(CRef, CRef),
     Assign(Variable, ARef),
@@ -50,10 +48,10 @@ impl CmdExpr<CRef> for CRef {
                 Ok(false) => b.eval(state),
                 Err(msg) => Err(msg)
             },
-            Cmd::While(ref cond, ref c0, ref body) => {
+            Cmd::While(ref cond, ref _c0, ref body) => {
                 loop { // dangerous: an infinite loop will loop infinitely!
                     match cond.eval(state) {
-                        Ok(true) => { body.eval(state); },
+                        Ok(true) => { let _ = body.eval(state); },
                         Ok(false) => { return Ok(()) },
                         Err(msg) => { return Err(msg) },
                     }
@@ -268,6 +266,7 @@ pub mod tests {
         assert_eq!(b1, b3);
 
         let b4 = b3.eval1(&mut state).unwrap();
+        assert_eq!(a2, b4);
         assert_eq!(Ok(10), state.get("x"));
     }
 }

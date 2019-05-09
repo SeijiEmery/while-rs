@@ -23,5 +23,5 @@ impl State for MockStateWithVar {
             Err(format!("undefined variable '{}'!", var))
         }
     }
-    fn set (&mut self, var: &str, val: Value) {}
+    fn set (&mut self, _: &str, _: Value) {}
 }

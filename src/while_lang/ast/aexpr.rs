@@ -12,7 +12,7 @@ pub type ARef = Rc<AExpr>;
 pub type AResult = Result<ARef, String>;
 
 #[derive(Debug, PartialEq, PartialOrd, Clone)]
-enum BinOp { Add, Sub, Mul }
+pub enum BinOp { Add, Sub, Mul }
 
 // constructors
 pub fn val (v: Value) -> ARef { Rc::new(AExpr::Val(v)) }
@@ -211,7 +211,7 @@ pub mod tests {
 
         let mut ast = a;
         assert_eq!(false, ast.is_reduced());
-        while (!ast.is_reduced()) {
+        while !ast.is_reduced() {
             ast = ast.eval1(&state).unwrap();
             assert_eq!(Ok(6), ast.eval(&state));
         }
