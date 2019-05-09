@@ -151,4 +151,67 @@ mod tests {
         assert_eq!(Ok(20), state.get("x"));
         assert_eq!(true, empty_state.get("x").is_err());
     }
+    #[test]
+    fn test_if_true () {
+        let mut state = HashState::new();
+        let a = if_(btrue(), assign("x", val(10)), assign("y", val(10)));
+        let a0 = if_(btrue(), assign("x", val(10)), assign("y", val(10)));
+        let a1 = assign("x", val(10));
+        let a2 = skip();
+
+        assert_eq!(false, a.is_reduced());
+        assert_eq!(true, state.get("x").is_err());
+        assert_eq!(true, state.get("y").is_err());
+        assert_eq!(a, a0);
+
+        let b1 = a.eval1(&mut state).unwrap();
+        assert_eq!(a0, a);
+        assert_eq!(a1, b1);
+        assert_eq!(true, state.get("x").is_err());
+        assert_eq!(true, state.get("y").is_err());
+
+        let b2 = b1.eval1(&mut state).unwrap();
+        assert_eq!(a0, a);
+        assert_eq!(a1, b1);
+        assert_eq!(a2, b2);
+        assert_eq!(Ok(10), state.get("x"));
+        assert_eq!(true, state.get("y").is_err());
+
+        let b3 = b2.eval1(&mut state).unwrap();
+        assert_eq!(b2, b3);
+        assert_eq!(Ok(10), state.get("x"));
+        assert_eq!(true, state.get("y").is_err());
+    }
+    #[test]
+    fn test_if_false () {
+        let mut state = HashState::new();
+        let a = if_(bfalse(), assign("x", val(10)), assign("y", val(10)));
+        let a0 = if_(bfalse(), assign("x", val(10)), assign("y", val(10)));
+        let a1 = assign("y", val(10));
+        let a2 = skip();
+
+        assert_eq!(false, a.is_reduced());
+        assert_eq!(true, state.get("x").is_err());
+        assert_eq!(true, state.get("y").is_err());
+        assert_eq!(a, a0);
+
+        let b1 = a.eval1(&mut state).unwrap();
+        assert_eq!(a0, a);
+        assert_eq!(a1, b1);
+        assert_eq!(true, state.get("x").is_err());
+        assert_eq!(true, state.get("y").is_err());
+
+        let b2 = b1.eval1(&mut state).unwrap();
+        assert_eq!(a0, a);
+        assert_eq!(a1, b1);
+        assert_eq!(a2, b2);
+        assert_eq!(true, state.get("x").is_err());
+        assert_eq!(Ok(10), state.get("y"));
+
+        let b3 = b2.eval1(&mut state).unwrap();
+        assert_eq!(b2, b3);
+        assert_eq!(true, state.get("x").is_err());
+        assert_eq!(Ok(10), state.get("y"));
+    }
+
 }
