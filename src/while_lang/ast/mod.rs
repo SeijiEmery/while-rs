@@ -1,16 +1,13 @@
-#![macro_use]
+pub mod expr;
+pub mod state;
+pub mod state_mocks;
 pub mod aexpr;
 pub mod bexpr;
 pub mod cmd;
-mod macro_utils;
-pub use aexpr::AExpr;
-pub use aexpr::val;
-pub use aexpr::var;
-pub use aexpr::add;
-pub use aexpr::sub;
-pub use aexpr::mul;
-pub use bexpr::BExpr;
-pub use bexpr::btrue;
-pub use bexpr::bfalse;
-pub use bexpr::equal;
-pub use bexpr::less;
+
+use expr::{ Expr };
+use state::{ State, Value, Variable, VResult };
+use aexpr::{ ARef, AResult, val, var, add, sub, mul };
+use bexpr::{ BRef, BResult, btrue, bfalse, not, or, and, less, equal };
+use cmd::{ CRef, CResult, skip, seq, assign, if_, while_ };
+
