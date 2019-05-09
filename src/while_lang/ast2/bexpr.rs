@@ -85,6 +85,7 @@ impl Expr<bool, BRef> for BRef {
 mod tests {
     use super::*;
     use super::super::state_mocks::*;
+    use super::super::*;
 
     #[test]
     fn test_true () {
@@ -131,5 +132,101 @@ mod tests {
         assert_eq!(Ok(bfalse()), and(bfalse(), btrue()).eval1(&state));
         assert_eq!(Ok(bfalse()), and(btrue(), bfalse()).eval1(&state));
         assert_eq!(Ok(bfalse()), and(bfalse(), bfalse()).eval1(&state));
+    }
+    #[test]
+    fn test_less () {
+        let state = MockEmptyState::new();
+        assert_eq!(false, less(val(10), val(10)).is_reduced());
+        assert_eq!(true, less(val(10), val(10)).eval1(&state).unwrap().is_reduced());
+        assert_eq!(Ok(btrue()), less(val(9), val(10)).eval1(&state));
+        assert_eq!(Ok(bfalse()), less(val(10), val(10)).eval1(&state));
+        assert_eq!(Ok(bfalse()), less(val(10), val(9)).eval1(&state));
+    }
+    #[test]
+    fn test_equal () {
+        let state = MockEmptyState::new();
+        assert_eq!(false, equal(val(10), val(10)).is_reduced());
+        assert_eq!(true, equal(val(10), val(10)).eval1(&state).unwrap().is_reduced());
+        assert_eq!(Ok(bfalse()), equal(val(9), val(10)).eval1(&state));
+        assert_eq!(Ok(btrue()), equal(val(10), val(10)).eval1(&state));
+        assert_eq!(Ok(bfalse()), equal(val(10), val(9)).eval1(&state));
+    }
+    #[test]
+    fn test_compound () {
+        let state = MockStateWithVar::new("x", 10);
+        let a0 = and(
+            less(val(9), var("x")),
+            or(not(equal(val(10), var("x"))),
+                    not(not(and(bfalse(), less(val(9), var("x")))))));
+        let a1 = and(
+            less(val(9), val(10)),
+            or(not(equal(val(10), var("x"))),
+                    not(not(and(bfalse(), less(val(9), var("x")))))));
+        let a2 = and(
+            btrue(),
+            or(not(equal(val(10), var("x"))),
+                    not(not(and(bfalse(), less(val(9), var("x")))))));
+        let a3 = and(
+            btrue(),
+            or(not(equal(val(10), val(10))),
+                    not(not(and(bfalse(), less(val(9), var("x")))))));
+        let a4 = and(
+            btrue(),
+            or(not(btrue()),
+                    not(not(and(bfalse(), less(val(9), var("x")))))));
+        let a5 = and(
+            btrue(),
+            or(bfalse(),
+               not(not(and(bfalse(), less(val(9), var("x")))))));
+        let a6 = and(
+            btrue(),
+            or(bfalse(),
+               not(not(bfalse()))));
+        let a7 = and(
+            btrue(),
+            or(bfalse(),
+               not(btrue())));
+        let a8 = and(
+            btrue(),
+            or(bfalse(),
+               bfalse()));
+        let a9 = and(
+            btrue(),
+            bfalse());
+        let a10 = bfalse();
+        let a11 = bfalse();
+
+        assert_eq!(Ok(a1.clone()), a0.eval1(&state));
+        assert_eq!(Ok(a2.clone()), a1.eval1(&state));
+        assert_eq!(Ok(a3.clone()), a2.eval1(&state));
+        assert_eq!(Ok(a4.clone()), a3.eval1(&state));
+        assert_eq!(Ok(a5.clone()), a4.eval1(&state));
+        assert_eq!(Ok(a6.clone()), a5.eval1(&state));
+        assert_eq!(Ok(a7.clone()), a6.eval1(&state));
+        assert_eq!(Ok(a8.clone()), a7.eval1(&state));
+        assert_eq!(Ok(a9.clone()), a8.eval1(&state));
+        assert_eq!(Ok(a10.clone()), a9.eval1(&state));
+        assert_eq!(Ok(a11.clone()), a10.eval1(&state));
+        assert_eq!(Ok(a11.clone()), a11.eval1(&state));
+    }
+    #[test]
+    fn test_compound_errors () {
+        let state = MockStateWithVar::new("x", 10);
+        let a0 = and(
+            less(val(9), var("x")),
+            or(not(equal(val(10), var("y"))),
+                    not(not(and(bfalse(), less(val(9), var("x")))))));
+        let a1 = and(
+            less(val(9), val(10)),
+            or(not(equal(val(10), var("y"))),
+                    not(not(and(bfalse(), less(val(9), var("x")))))));
+        let a2 = and(
+            btrue(),
+            or(not(equal(val(10), var("y"))),
+                    not(not(and(bfalse(), less(val(9), var("x")))))));
+
+        assert_eq!(Ok(a1.clone()), a0.eval1(&state));
+        assert_eq!(Ok(a2.clone()), a1.eval1(&state));
+        assert_eq!(true, a2.eval1(&state).is_err());
     }
 }
