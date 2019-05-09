@@ -5,7 +5,7 @@ use super::aexpr::{ ARef };
 use super::aexpr;
 
 #[derive(Debug, PartialOrd, PartialEq)]
-enum BExpr {
+pub enum BExpr {
     BTrue,
     BFalse,
     Not(BRef),

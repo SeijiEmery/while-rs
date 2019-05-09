@@ -3,7 +3,7 @@ use super::expr::Expr;
 use super::state::{ State, Value, VResult };
 
 #[derive(Debug, PartialOrd, PartialEq)]
-enum AExpr {
+pub enum AExpr {
     Val(Value),
     Var(String),
     Binary(BinOp, ARef, ARef)
