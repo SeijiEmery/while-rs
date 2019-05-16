@@ -2,6 +2,7 @@
 #include "../src/macros.hpp"
 
 int main () {
+    #undef show
     #define show(expr) \
         printf(#expr " => "); println(expr)
 
